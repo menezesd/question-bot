@@ -218,6 +218,29 @@ openai.api_base = "https://ai-proxy.epam-rail.com"
 deployment_name = "gpt-35-turbo"
 
 
+def are_questions_same(question1, question2):
+    """
+    Check if two questions are asking the same thing using ChatGPT.
+
+    Args:
+        question1 (str): The first question to compare.
+        question2 (str): The second question to compare.
+
+    Returns:
+        bool: True if questions are determined to be the same, False otherwise.
+    """
+    prompt = f"Are these two questions asking the same thing? Answer YES or NO, only. \n\nQ1: {question1}\nQ2: {question2}\n\nAnswer:"
+
+    response = openai.Completion.create(
+        engine="davinci-codex",
+        prompt=prompt,
+        max_tokens=1,
+    )
+
+    answer = response.choices[0].text.strip().lower()
+    return 'yes' in answer
+
+
 def get_chatgpt_answer(question):
     """
     Generate an answer using the ChatGPT model for a given question.
