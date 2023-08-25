@@ -74,6 +74,28 @@ openai.api_base = "https://ai-proxy.epam-rail.com"
 deployment_name = "gpt-35-turbo"
 THRESHOLD = 0.88
 
+def get_similar_question(question):
+    """
+    Generate a similar question using ChatGPT.
+
+    Args:
+        question (str): The input question.
+
+    Returns:
+        str: A generated question similar in content to the input question.
+    """
+    prompt = f"Generate a question similar to the following, but which actually asks something different:\n\n{question}\n\nGenerated Question:"
+
+    response = openai.Completion.create(
+        engine="davinci-codex",
+        prompt=prompt,
+        max_tokens=50,  # You can adjust the number of tokens for the generated question
+    )
+
+    generated_question = response.choices[0].text.strip()
+    return generated_question
+
+
 def are_questions_same(question1, question2):
     """
     Check if two questions are asking the same thing using ChatGPT.

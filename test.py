@@ -34,6 +34,49 @@ import openai
 import question_bot  # Import the module you want to test
 
 
+def get_similar_question_different(question):
+    """
+    Generate a similar question using ChatGPT.
+
+    Args:
+        question (str): The input question.
+
+    Returns:
+        str: A generated question similar in content to the input question.
+    """
+    prompt = f"Generate a question similar to the following, but which actually asks something different:\n\n{question}\n\nGenerated Question:"
+
+    response = openai.Completion.create(
+        engine="davinci-codex",
+        prompt=prompt,
+        max_tokens=50,  # You can adjust the number of tokens for the generated question
+    )
+
+    generated_question = response.choices[0].text.strip()
+    return generated_question
+
+def get_similar_question_same(question):
+    """
+    Generate a similar question using ChatGPT.
+
+    Args:
+        question (str): The input question.
+
+    Returns:
+        str: A generated question similar in content to the input question.
+    """
+    prompt = f"Generate a question similar to the following, which asks the same question with different wording:\n\n{question}\n\nGenerated Question:"
+
+    response = openai.Completion.create(
+        engine="davinci-codex",
+        prompt=prompt,
+        max_tokens=50,  # You can adjust the number of tokens for the generated question
+    )
+
+    generated_question = response.choices[0].text.strip()
+    return generated_question
+
+
 
 # List of words for random generation
 nouns = ["apple", "dog", "car", "banana", "computer"]
@@ -207,6 +250,33 @@ def test_find_most_similar_embedding_integration():
         print(
             f"This equals {100*not_similar_answers/len(questions)} per cent that are dissimilar"
         )
+        total_tests = len(questions)*2
+        true_positive = 0
+        false_positive = 0
+        true_negative = 0
+        false_negative = 0
+        for question in questions:
+            similar_question = get_similar_question_same(question)
+            different_question = get_similar_question_different(question)
+            similar_embedding =  question_bot.get_ada_embeddings(similar_embedding)
+            different_embedding =  question_bot.get_ada_embeddings(different_embedding)
+            _, _, similar_score = question_bot.find_most_similar_embedding(similar_embedding, embeddings_list)
+            _, _, different_score = question_bot.find_most_similar_embedding(different_embedding, embeddings_list)
+            if similar_score >= question_bot.THRESHOLD:
+                true_positive += 1
+            else:
+                false_negative += 1
+            if different_score >= question_bot.THRESHOLD:
+                false_positive += 1
+            else:
+                true_negative += 1
+            precision = true_positive / (true_positive + false_positive)
+            recall = true_positive / (true_positive + true_negative)
+            f1_score = 2 * (precision * recall)/(precision + recall)
+            print ("compared with questions considered the same or different by an LLM, we get:")
+            print (f"Precision: {precision}")
+            print (f"Recall: {recall}")
+            print (f"F1 score: {f1_score}")
 
 
 openai.api_type = "azure"
