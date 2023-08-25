@@ -1,8 +1,39 @@
+"""
+Testing Framework
+
+This module provides functions for generating random questions using templates
+and for comparing answers for similarity. It also includes an integration test
+that evaluates the similarity of answers between a question-answering system
+and ChatGPT.
+
+Functions:
+    generate_random_question():
+        Generate random questions by filling in templates with random words.
+
+    compare_answers(answer1, answer2):
+        Compare the similarity between two answers using a chosen similarity metric.
+
+Usage:
+    The functions in this module can be used to generate random questions by
+    filling in templates, and to compare the similarity of answers using a
+    specified similarity metric. The integration test demonstrates the comparison
+    of answers between a question-answering system and ChatGPT, providing insight
+    into the similarity of their responses.
+
+    For more details on individual function usage, refer to their respective
+    docstrings and comments in the code.
+"""
+
+import random
 import unittest
 from unittest.mock import MagicMock, patch
-import question_bot # Import the module you want to test
+
 import numpy as np
-import random
+
+import openai
+import question_bot  # Import the module you want to test
+
+
 
 # List of words for random generation
 nouns = ["apple", "dog", "car", "banana", "computer"]
@@ -13,28 +44,53 @@ verbs = ["run", "eat", "jump", "dance", "sleep"]
 templates = [
     "What is the purpose of the {noun} that is {adjective}?",
     "Can you {verb} the {noun} while being {adjective}?",
-    "Why does the {noun} look so {adjective} when it {verb}?"
+    "Why does the {noun} look so {adjective} when it {verb}?",
 ]
 
+
 def generate_random_question():
+    """This function generates random questions by filling in templates
+    with randomly selected words.
+
+    The function utilizes predefined lists of nouns, adjectives, and
+    verbs to create questions in a template-based manner. It randomly
+    selects a template, then picks a random noun, adjective, and verb
+    to populate the template. The resulting question is returned as
+    output.
+
+    Example:
+        generated_question = generate_random_question()
+        print(generated_question)
+
+    Output:
+        What is the purpose of the dog that is red?
+
+    """
+
     choice = random.choice(templates)
     question = choice.format(
         noun=random.choice(nouns),
         adjective=random.choice(adjectives),
-        verb=random.choice(verbs)
+        verb=random.choice(verbs),
     )
     return question
+
 
 class TestYourModule(unittest.TestCase):
     def setUp(self):
         self.dataset = {
             "train": [
-                {"question": "What is the capital of France?", "answers": ["Paris"]},
-                {"question": "Who wrote 'Romeo and Juliet'?", "answers": ["William Shakespeare"]},
+                {"question": "What is the capital of France?",
+                    "answers": ["Paris"]},
+                {
+                    "question": "Who wrote 'Romeo and Juliet'?",
+                    "answers": ["William Shakespeare"],
+                },
             ],
             "test": [
                 {"question": "What is 2 + 2?", "answers": ["4"]},
-                {"question": "What is the largest planet?", "answers": ["Jupiter"]},
+                {"question": "What is the largest planet?",
+                    "answers": ["Jupiter"]},
             ],
         }
         self.mocked_embeddings = [
@@ -59,57 +115,100 @@ class TestYourModule(unittest.TestCase):
 
 
 def test_find_most_similar_embedding_integration():
-        
-        dataset, questions, answers = question_bot.load_and_process_dataset()
+    """Test the integration of the find_most_similar_embedding function
+        with a question-answering system.
 
-        dataset_checksum = question_bot.calculate_checksum(questions + answers)
-        embedding_pickle_path = 'embedding_test.pickle'
-        embeddings_list = question_bot.load_or_create_embeddings(embedding_pickle_path, dataset_checksum, dataset)
+    This function tests the integration of various components within
+    the question-answering system. It calculates the embedding
+    checksum, loads or creates embeddings, compares answers between
+    the question-answering system and ChatGPT, and performs similarity
+    checks on generated bogus questions. The results are reported,
+    including the average similarity score, the number and percentage
+    of dissimilar answers, and comparison results for generated
+    questions.
 
-        total_similarity = 0
-        not_similar_answers = 0
-        for i, example in enumerate(questions):
-            user_embedding = question_bot.get_ada_embeddings(example)
-            result_embedding, result_index, similarity_score = question_bot.find_most_similar_embedding(
-                user_embedding, embeddings_list
+    Note:
+        - The get_chatgpt_answer() and generate_random_question()
+    functions are assumed to be defined and used within this context.
+
+        - The compare_answers() function is assumed to be defined
+          elsewhere and used for answer similarity comparison.
+
+    Example:
+        test_find_most_similar_embedding_integration()
+
+    Output:
+        Average similarity: 0.75
+        7 out of 20 are dissimilar in ChatGPT vs database
+        This equals 35.0 percent that are dissimilar
+
+    """
+    dataset, questions, answers = question_bot.load_and_process_dataset()
+
+    dataset_checksum = question_bot.calculate_checksum(questions + answers)
+    embedding_pickle_path = "embedding_test.pickle"
+    embeddings_list = question_bot.load_or_create_embeddings(
+        embedding_pickle_path, dataset_checksum, dataset
+    )
+
+    total_similarity = 0
+    not_similar_answers = 0
+    for i, example in enumerate(questions):
+        user_embedding = question_bot.get_ada_embeddings(example)
+        (result_embedding,
+         result_index,
+         similarity_score,
+         ) = question_bot.find_most_similar_embedding(user_embedding,
+                                                      embeddings_list)
+
+        assert similarity_score >= 0
+        assert result_embedding is not None
+        assert result_index >= 0
+        assert result_index < len(embeddings_list)
+
+        # Get the expected answer from your question-answering system
+        expected_answer = answers[i]
+        # Generate a ChatGPT answer using the same question
+        # Call the function you've defined earlier
+        chatgpt_answer = get_chatgpt_answer(example)
+
+        similarity_score = compare_answers(expected_answer, chatgpt_answer)
+        is_answer_similar = similarity_score >= 0.80
+        total_similarity = 0.0
+        if not is_answer_similar:
+            print(
+                f"ChatGPT and database answers are not similar for question: {example}"
             )
-
-            assert similarity_score >= 0
-            assert result_embedding is not None
-            assert result_index >= 0
-            assert result_index < len(embeddings_list)
-
-            # Get the expected answer from your question-answering system
-            expected_answer = answers[i]
-            # Generate a ChatGPT answer using the same question
-            chatgpt_answer = get_chatgpt_answer(example)  # Call the function you've defined earlier
-
-            similarity_score = compare_answers(expected_answer, chatgpt_answer)
-            is_answer_similar = similarity_score >= 0.80
-            
-            if not is_answer_similar:
-                print(f"ChatGPT and database answers are not similar for question: {example}")
-                print(f"Database answer: {expected_answer}")
-                print(f"ChatGPT answer: {chatgpt_answer}")
-                not_similar_answers += 1
+            print(f"Database answer: {expected_answer}")
+            print(f"ChatGPT answer: {chatgpt_answer}")
+            not_similar_answers += 1
             total_similarity += similarity_score
-            
+
         for i in range(1000):
             bogus_question = generate_random_question()
             user_embedding = question_bot.get_ada_embeddings(bogus_question)
-            result_embedding, result_index, similarity_score = question_bot.find_most_similar_embedding(
+            (
+                result_embedding,
+                result_index,
+                similarity_score,
+            ) = question_bot.find_most_similar_embedding(
                 user_embedding, embeddings_list
             )
-            assert(result_embedding is not None)
+            assert result_embedding is not None
             assert result_index >= 0
             assert result_index < len(embeddings_list)
             assert result_embedding is not None
             assert result_index >= 0
             assert similarity_score < question_bot.THRESHOLD
-        print(f"Average similarity: {total_similarilty / len(questions}")
-        print(f"{not_similar answers} out of {len(questions)} are dissimilar in ChatGPT vs database")
-        print(f"This equals {100*not_similar_answers/len(questions)} per cent that are dissimilar")
-        
+        print(f"Average similarity: {total_similarity / len(questions)}")
+        print(
+            f"{not_similar_answers} out of {len(questions)} are dissimilar in ChatGPT vs database"
+        )
+        print(
+            f"This equals {100*not_similar_answers/len(questions)} per cent that are dissimilar"
+        )
+
+
 openai.api_type = "azure"
 openai.api_version = "2023-03-15-preview"
 
@@ -118,31 +217,61 @@ openai.api_base = "https://ai-proxy.epam-rail.com"
 
 deployment_name = "gpt-35-turbo"
 
+
 def get_chatgpt_answer(question):
+    """
+    Generate an answer using the ChatGPT model for a given question.
+
+    Args:
+        question (str): The question for which an answer is to be generated.
+
+    Returns:
+        str: The generated answer from ChatGPT for the given question.
+    """
     response = openai.ChatCompletion.create(
         engine=deployment_name,
         temperature=0,
-        messages=[
-            {
-                "role": "user",
-                "content": question
-            }
-        ],
+        messages=[{"role": "user", "content": question}],
     )
-    return response.choices[0].message['content']
+    return response.choices[0].message["content"]
 
-def compare_answers(expected_answer, chatgpt_answer):
-    # Implement your similarity comparison logic here
-    # You can use techniques like cosine similarity or pre-trained embeddings
-    # For simplicity, let's assume a basic string similarity check
-    embedding1 = question_bot.get_ada_emdeddings(expected_answer)
-    embedding2 = question_bot.get_ada_emdeddings(chatgpt_answer)
-    similarity_score = 1 - cosine(np.array(embedding1), np.array(embedding2))
+
+def compare_answers(answer1, answer2):
+    """Compare the similarity between two answers using a chosen
+similarity metric.
+
+        This function compares the similarity between two given
+        answers using a specified similarity comparison logic. The
+        function calculates a similarity score based on the chosen
+        metric, which can include techniques like cosine similarity or
+        pre-trained embeddings. The example provided here assumes a
+        basic string similarity check using cosine similarity between
+        the embeddings of the answers.
+
+    Parameters:
+        answer1 (str): The first answer for comparison.
+        answer2 (str): The second answer for comparison.
+
+        Returns:
+        float: The similarity score between the two answers.
+
+        Example:
+        answer1 = "The capital of France is Paris."
+        answer2 = "Paris is the capital of France."
+        similarity = compare_answers(answer1, answer2)
+        print(similarity)
+
+        Output:
+        0.85  # Example similarity score (not actual output)
+
+    """
+
+    embedding1 = question_bot.get_ada_emdeddings(answer1)
+    embedding2 = question_bot.get_ada_emdeddings(answer2)
+    similarity_score = 1 - np.cosine(np.array(embedding1), np.array(embedding2))
     return similarity_score
-
 
 
 if __name__ == "__main__":
     test_find_most_similar_embedding_integration()
     unittest.main()
-
