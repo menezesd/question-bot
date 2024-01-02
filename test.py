@@ -23,8 +23,6 @@ Usage:
     For more details on individual function usage, refer to their respective
     docstrings and comments in the code.
 """
-
-import random
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -32,6 +30,7 @@ import numpy as np
 
 import openai
 import question_bot  # Import the module you want to test
+import secrets
 
 
 def get_similar_question_different(question):
@@ -110,11 +109,11 @@ def generate_random_question():
 
     """
 
-    choice = random.choice(templates)
+    choice = secrets.SystemRandom().choice(templates)
     question = choice.format(
-        noun=random.choice(nouns),
-        adjective=random.choice(adjectives),
-        verb=random.choice(verbs),
+        noun=secrets.SystemRandom().choice(nouns),
+        adjective=secrets.SystemRandom().choice(adjectives),
+        verb=secrets.SystemRandom().choice(verbs),
     )
     return question
 
