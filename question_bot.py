@@ -62,6 +62,7 @@ from scipy.spatial.distance import cosine
 
 import openai
 from datasets import load_dataset
+import fickling
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -261,7 +262,7 @@ with the embeddings list.
     if os.path.exists(embedding_pickle_path):
         try:
             with open(embedding_pickle_path, "rb") as handle:
-                saved_checksum, embeddings_list = pickle.load(handle)
+                saved_checksum, embeddings_list = fickling.load(handle)
         except (pickle.UnpicklingError, ValueError):
             saved_checksum = None
             embeddings_list = None
